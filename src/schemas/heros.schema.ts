@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
-@Schema()
+@Schema({ collection: 'actual_collection_name', strict: false })
 export default class Hero {
   @Prop()
   name: string;
@@ -12,4 +12,4 @@ export default class Hero {
   isAvenger: boolean;
 }
 
-export const HeroSchema = SchemaFactory.createForClass(Hero);
+export const HeroSchema = SchemaFactory.createForClass(Hero); // Hero is class name
