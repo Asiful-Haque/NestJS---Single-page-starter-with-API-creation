@@ -2,13 +2,13 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 @Schema({ collection: 'actual_collection_name', strict: false })
 export default class Hero {
-  @Prop()
+  @Prop({ type: String, required: true })
   name: string;
 
-  @Prop()
+  @Prop({ type: String, required: true })
   realName: string;
 
-  @Prop()
+  @Prop({ type: Boolean, required: true })
   isAvenger: boolean;
 }
 
