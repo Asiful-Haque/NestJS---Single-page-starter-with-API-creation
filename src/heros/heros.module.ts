@@ -15,7 +15,8 @@ export class HerosModule {}
 
 
 
-if want to add middleware
+-------------------------------if want to add middleware----------------------------
+
 // src/middleware/logger.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 
@@ -44,3 +45,33 @@ export class AppModule implements NestModule {
       .forRoutes('*');         // ✅ apply for all routes
   }
 }
+
+
+------------------------------------------Bujhar jonno---------------------------------------------------
+  but in express - (for core basic idea)
+  
+app.get('/profile', authMiddleware, logMiddleware, (req, res) => {
+  console.log(req.user); // ✅ User info is now available
+  res.send(`Hello, ${req.user.name}`);
+});
+
+1st - /profile
+2nd - authMiddleware - its next will call the next middleware
+3rd - logMiddleware - its next will call next route handler
+4th - (req, res)
+
+
+// Middleware 2: Authorization check (auth middleware)
+app.use((req, res, next) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ message: 'Unauthorized: Token missing' }); 
+  }
+  const decoded_data = verifyToken(token, 'secret'); 
+  if (!decoded_data) {
+    return res.status(401).json({ message: 'Unauthorized: Invalid token' }); 
+  }
+  req.user = decoded_data; 
+  next();  
+});
+
