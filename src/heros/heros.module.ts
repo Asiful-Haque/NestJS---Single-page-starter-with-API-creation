@@ -37,12 +37,19 @@ import { loggerMiddleware } from './middleware/logger.middleware';
   controllers: [HerosController],
   providers: [HerosService],
 })
-  
+
+export class HerosModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(loggerMiddleware).forRoutes(HerosController); // Apply only for this module
+  }
+}
+
+// Apply for all module
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(loggerMiddleware) // ✅ function middleware
-      .forRoutes('*');         // ✅ apply for all routes
+      .forRoutes('*');         // ✅ apply for all routes ,// Global Middleware
   }
 }
 
