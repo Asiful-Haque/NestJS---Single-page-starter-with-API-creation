@@ -1,0 +1,236 @@
+1. auth.module.ts ----------------------------------------------------------------------------------
+typescript
+Copy
+Edit
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { UserModule } from '../user/user.module';
+
+@Module({
+  imports: [
+    PassportModule,
+    JwtModule.register({
+      secret: 'YOUR_SECRET_KEY',
+      signOptions: { expiresIn: '1h' },
+    }),
+    UserModule,
+  ],
+  controllers: [AuthController],
+  providers: [AuthService, JwtStrategy],
+  exports: [AuthService],
+})
+export class AuthModule {}
+
+
+
+2. auth.controller.ts--------------------------------------------------------------------------------
+typescript
+Copy
+Edit
+import { Controller, Post, Body, Req, UseGuards } from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { AuthGuard } from '@nestjs/passport';
+
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  @Post('login')
+  async login(@Body() body: { email: string; password: string }) {
+    return this.authService.login(body);
+  }
+
+  @Post('me')
+  @UseGuards(AuthGuard('jwt'))
+  async getProfile(@Req() req) {
+    return req.user;
+  }
+}
+
+
+
+3. auth.service.ts--------------------------------------------------------------------------------
+typescript
+Copy
+Edit
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { UserService } from '../user/user.service';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private jwtService: JwtService,
+    private userService: UserService,  ----its using the user schema..so auth service not need userschema----
+  ) {}
+
+  async login({ email, password }: { email: string; password: string }) {
+    const user = await this.userService.findByEmail(email);
+    if (!user || user.password !== password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload = { userId: user._id, email: user.email };
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
+  }
+}
+
+
+
+
+4. jwt.strategy.ts--------------------------------------------------------------------------------
+typescript
+Copy
+Edit
+import { Injectable } from '@nestjs/common';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor() {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      secretOrKey: 'YOUR_SECRET_KEY',
+    });
+  }
+
+  async validate(payload: any) {
+    return { userId: payload.userId, email: payload.email };
+  }
+}
+
+
+
+
+5. user.module.ts--------------------------------------------------------------------------------
+typescript
+Copy
+Edit
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { UserService } from './user.service';
+import { UserController } from './user.controller';
+import { User, UserSchema } from './user.schema';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+  ],
+  controllers: [UserController],
+  providers: [UserService],
+  exports: [UserService],
+})
+export class UserModule {}
+
+
+
+
+
+
+6. user.controller.ts--------------------------------------------------------------------------------
+typescript
+Copy
+Edit
+import { Controller, Get, Param, Post, Body, UseGuards } from '@nestjs/common';
+import { UserService } from './user.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
+@Controller('users')
+export class UserController {
+  constructor(private readonly userService: UserService) {}
+
+  // Public Route - Register User
+  @Post('register')
+  async createUser(@Body() { email, password }: { email: string; password: string }) {
+    return this.userService.createUser({ email, password });
+  }
+
+  // Public Route - Find User by Email (used during login)
+  @Post('find-email')
+  async findByEmail(@Body('email') email: string) {
+    return this.userService.findByEmail(email);
+  }
+
+  // Protected Route - Get User by ID
+  @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  async getUserById(@Param('id') id: string) {
+    return this.userService.getUserById(id);
+  }
+}
+
+
+
+
+
+7. user.service.ts--------------------------------------------------------------------------------
+typescript
+Copy
+Edit
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User } from './user.schema';
+
+@Injectable()
+export class UserService {
+  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+
+  async createUser({ email, password }: { email: string; password: string }) {
+    const user = new this.userModel({ email, password });
+    return user.save();
+  }
+
+  async getUserById(id: string) {
+    return this.userModel.findById(id).exec();
+  }
+
+  async findByEmail(email: string) {
+    return this.userModel.findOne({ email }).exec();
+  }
+}
+
+
+
+
+8. user.schema.ts--------------------------------------------------------------------------------
+typescript
+Copy
+Edit
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
+
+@Schema()
+export class User extends Document {
+  @Prop({ required: true, unique: true })
+  email: string;
+
+  @Prop({ required: true })
+  password: string;
+}
+
+export const UserSchema = SchemaFactory.createForClass(User);
+
+
+
+
+9. main.ts--------------------------------------------------------------------------------------
+typescript
+Copy
+Edit
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  app.setGlobalPrefix('api');
+  await app.listen(3000);
+}
+bootstrap();
