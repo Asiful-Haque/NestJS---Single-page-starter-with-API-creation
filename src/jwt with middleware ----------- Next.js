@@ -50,7 +50,7 @@ export function verifyToken(token: string): any | null {
 
 
 
-4. middleware.ts ---------------------------------------------------->
+4. middleware.ts ---------------------------------------              for the frontend ✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓               ------------->
 
 🔒 Why use middleware?
 - No need to duplicate token checking in each route.
@@ -81,7 +81,7 @@ export const config = {
 };
 
 
-5. in other customized route where you dont want to use middleware...there you need to use token manually................>>>>>>
+5. in api endpoint route ...there you need to use token manually.......               for backend ✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓.........>>>>>>
 const token = localStorage.getItem('token');
 const res = await fetch('/api/some-protected-route', {
   headers: {
