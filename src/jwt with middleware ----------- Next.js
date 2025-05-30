@@ -51,6 +51,7 @@ export function verifyToken(token: string): any | null {
 
 
 4. middleware.ts ---------------------------------------              for the frontend ✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓               ------------->
+  ✅ This improves user experience by stopping unauthenticated users early. maybe using postman or else ..with out user from actual browser
 
 🔒 Why use middleware?
 - No need to duplicate token checking in each route.
