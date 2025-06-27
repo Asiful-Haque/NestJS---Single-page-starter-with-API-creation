@@ -1,0 +1,208 @@
+✅ 1. JWT Token Generation (Login Flow)
+User sends credentials → gets token
+
+🔄 Workflow:
+Client (Frontend)
+   ↓ POST /auth/login
+auth.controller.ts
+   ↓
+auth.service.ts
+   ↓
+JwtService.sign(payload)   ← Generates JWT
+   ↓
+Returns JWT token to client
+
+-----------------------------------------------------------------------------------------------------------------------
+npm install @nestjs/jwt @nestjs/passport passport passport-jwt
+-----------------------------------------------------------------------------------------------------------------------
+
+Full Example: JWT Auth + Roles (No DTOs)
+
+
+
+1. jwt.strategy.ts---------------------------------------------------------------------------------------------------------------
+// src/auth/jwt.strategy.ts
+import { Injectable } from '@nestjs/common';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor() {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      secretOrKey: process.env.JWT_SECRET || 'secret123',
+    });
+  }
+
+  async validate(payload: any) {
+    return { userId: payload.sub, role: payload.role };
+  }
+}
+
+
+2. roles.decorator.ts---------------------------------------------------------------------------------------------------------------
+// src/auth/roles.decorator.ts
+import { SetMetadata } from '@nestjs/common';
+
+export const ROLES_KEY = 'roles';
+export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
+
+
+3. roles.guard.ts---------------------------------------------------------------------------------------------------------------
+// src/auth/roles.guard.ts
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { ROLES_KEY } from './roles.decorator';
+
+@Injectable()
+export class RolesGuard implements CanActivate {
+  constructor(private reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (!requiredRoles) return true;
+
+    const { user } = context.switchToHttp().getRequest();
+    return requiredRoles.includes(user.role);
+  }
+}
+
+
+
+4. auth.service.ts---------------------------------------------------------------------------------------------------------------
+// src/auth/auth.service.ts
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+
+// Example in-memory users
+const users = [
+  { id: 1, username: 'admin', password: '$2b$10$4Ft2gQl.puz6kFhR7O61zOZL6tN2Vt27oFqCXt9VqkWMiOcSoVq9S', role: 'admin' }, // password: admin123
+  { id: 2, username: 'user', password: '$2b$10$3/kIwQf5WyQyYcizxlwX7O.KvOGoVZp4V.9Mx/UfEbH1vfVhtTfg6', role: 'user' },  // password: user123
+];
+
+@Injectable()
+export class AuthService {
+  constructor(private jwtService: JwtService) {}
+
+  async validateUser(username: string, pass: string): Promise<any> {
+    const user = users.find(u => u.username === username);
+    if (!user) return null;
+    const isMatch = await bcrypt.compare(pass, user.password);
+    if (isMatch) {
+      const { password, ...result } = user;
+      return result;
+    }
+    return null;
+  }
+
+  async login(user: any) {
+    const payload = { username: user.username, sub: user.id, role: user.role };
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
+  }
+}
+
+
+5. auth.controller.ts (No DTOs)---------------------------------------------------------------------------------------------------------------
+// src/auth/auth.controller.ts
+import { Controller, Post, Body, UnauthorizedException } from '@nestjs/common';
+import { AuthService } from './auth.service';
+
+@Controller('auth')
+export class AuthController {
+  constructor(private authService: AuthService) {}
+
+  @Post('login')
+  async login(@Body() body: { username: string; password: string }) {
+    const { username, password } = body;
+    const user = await this.authService.validateUser(username, password);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    return this.authService.login(user);
+  }
+}
+
+
+6. auth.module.ts---------------------------------------------------------------------------------------------------------------
+// src/auth/auth.module.ts
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { JwtStrategy } from './jwt.strategy';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { RolesGuard } from './roles.guard';
+
+@Module({
+  imports: [
+    PassportModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'secret123',
+      signOptions: { expiresIn: '1h' },
+    }),
+  ],
+  providers: [AuthService, JwtStrategy, RolesGuard],
+  controllers: [AuthController],
+  exports: [AuthService],
+})
+export class AuthModule {}
+
+
+
+7. Example usage of Guards in other controllers---------------------------------------------------------------------------------------------------------------
+
+###############
+ProfileController (JWT-protected route)
+// src/profile/profile.controller.ts
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+
+@Controller('profile')
+export class ProfileController {
+  @UseGuards(AuthGuard('jwt'))
+  @Get()
+  getProfile() {
+    return { message: 'This is a protected profile route' };
+  }
+}
+
+############
+AdminController (Role-protected route)
+// src/admin/admin.controller.ts
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+
+@Controller('admin')
+export class AdminController {
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('admin')
+  @Get()
+  getAdminData() {
+    return { message: 'Welcome Admin' };
+  }
+}
+
+
+
+
+
+
+Summary Table
+Feature	                             File / Usage
+JWT Strategy	                      jwt.strategy.ts
+Role Decorator                    	roles.decorator.ts
+Role Guard                       	roles.guard.ts
+Auth Service	                     auth.service.ts
+Auth Controller	                   auth.controller.ts
+Auth Module	                        auth.module.ts
+Protect Routes	                     @UseGuards(AuthGuard('jwt'))
+Protect with Role	                  @UseGuards(AuthGuard('jwt'), RolesGuard) + @Roles('role')
