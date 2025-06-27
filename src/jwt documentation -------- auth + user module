@@ -7,6 +7,13 @@ WE NEED USERMODULE >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 v
 
 
+✅ JWT Signing vs Verification
+Operation	       Who does it?                               	               Purpose
+Sign	            JwtService.sign() -> manually	                   Creates a token with a secret key
+Verify	         AuthGuard('jwt') + JwtStrategy -> auto	          Validates token and attaches user
+so no need to manually verify like nodejs......in nest
+
+
 1. auth.module.ts ----------------------------------------------------------------------------------
 typescript
 Copy
