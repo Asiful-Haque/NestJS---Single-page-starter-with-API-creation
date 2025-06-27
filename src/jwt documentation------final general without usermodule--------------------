@@ -88,7 +88,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 
-// Example in-memory users
+// Example in-memory users  ---*******JUST FOR GETTING THIS DATA FROM DB WE USE USERMODULE PARTS***---
 const users = [
   { id: 1, username: 'admin', password: '$2b$10$4Ft2gQl.puz6kFhR7O61zOZL6tN2Vt27oFqCXt9VqkWMiOcSoVq9S', role: 'admin' }, // password: admin123
   { id: 2, username: 'user', password: '$2b$10$3/kIwQf5WyQyYcizxlwX7O.KvOGoVZp4V.9Mx/UfEbH1vfVhtTfg6', role: 'user' },  // password: user123
