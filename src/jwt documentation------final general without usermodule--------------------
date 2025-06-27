@@ -8,9 +8,10 @@ v
 
 
 ✅ JWT Signing vs Verification
-Operation	       Who does it?                               	               Purpose
-Sign	            JwtService.sign() -> manually	                   Creates a token with a secret key
-Verify	         AuthGuard('jwt') + JwtStrategy -> auto	          Validates token and attaches user
+Operation	               Who does it?                               	                              Purpose
+Sign	           userservice.isvalid() + JwtService.sign() -> manually	                   Creates a token with a secret key
+Verify	         AuthGuard('jwt') + JwtStrategy -> auto	                                   Validates token and attaches user
+
 so no need to manually verify like nodejs......in nest
 
 
